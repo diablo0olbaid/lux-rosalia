@@ -28,50 +28,83 @@ const TRACKS = [
 const W = 1080, H = 1920;
 const palette = { ink: "#111", gold: "#b99251" };
 
-// ========= Texto distribuido por carácter (centrado y justificado) =========
-function JustifiedLine({ text, max = 88 }: { text: string; max?: number }) {
+// ========= Línea centrada y justificada por ESPACIADO (sin solapes) =========
+function JustifiedLine({
+  text,
+  max = 88,
+  min = 26,
+  color = "#111",
+}: {
+  text: string;
+  max?: number;
+  min?: number;
+  color?: string;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [fs, setFs] = useState(max);
   const [w, setW] = useState(0);
-  const [h, setH] = useState(Math.ceil(max * 1.1));
-  const letters = [...text.replace(/\s+/g, " ")];
+
+  // mide ancho real con la fuente en un canvas offscreen
+  const measure = (t: string, size: number) => {
+    const c = document.createElement("canvas");
+    const ctx = c.getContext("2d")!;
+    ctx.font = `${size}px "Times New Roman", Times, serif`;
+    // desactivar ligaduras/kerning en el cálculo
+    // (no todas las implementaciones lo respetan, por eso usamos spacing luego)
+    return ctx.measureText(t).width;
+  };
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const measure = () => {
-      const box = el.getBoundingClientRect();
-      setW(Math.max(0, Math.floor(box.width)));
-    };
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    Promise.resolve().then(() => requestAnimationFrame(measure));
-    return () => ro.disconnect();
-  }, [text]);
 
-  const xs = useMemo(() => {
-    const slots = letters.length;
-    if (!w || slots === 0) return [] as number[];
-    const left = 0, right = w;
-    const step = slots > 1 ? (right - left) / (slots - 1) : 0;
-    return Array.from({ length: slots }, (_, i) => left + i * step);
-  }, [w, letters.length]);
+    const doFit = () => {
+      const width = Math.max(1, Math.floor(el.getBoundingClientRect().width));
+      setW(width);
+      // binary search para el font-size más grande que quepa SIN justificar
+      let lo = min, hi = max, best = min;
+      const T = text.toUpperCase();
+      for (let i = 0; i < 12; i++) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (measure(T, mid) <= width) {
+          best = mid; lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      setFs(best);
+    };
+
+    const ro = new ResizeObserver(doFit);
+    ro.observe(el);
+    Promise.resolve().then(() => requestAnimationFrame(doFit));
+    return () => ro.disconnect();
+  }, [text, max, min]);
+
+  const h = Math.ceil(fs * 1.12);
+  const T = text.toUpperCase();
 
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>
-      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
-        <g
+      <svg width="100%" height={h} viewBox={`0 0 ${Math.max(1, w)} ${h}`} preserveAspectRatio="none">
+        <text
+          x={0}
+          y={Math.floor(h * 0.82)}
+          textAnchor="start"
+          fill={color}
           fontFamily="'Times New Roman', Times, serif"
           fontSize={fs}
-          fill={palette.ink}
-          style={{ fontKerning: "none" as any, fontFeatureSettings: '"liga" 0, "clig" 0' }}
+          // Importantísimo: justificar solo ESPACIADO, sin deformar glifos
+          textLength={Math.max(1, w)}
+          lengthAdjust="spacing"
+          // y desactivar ligaduras/kerning para que html2canvas renderice igual
+          style={{
+            fontKerning: "none" as any,
+            fontFeatureSettings: '"liga" 0, "clig" 0',
+          }}
         >
-          {letters.map((ch, i) => (
-            <text key={i} x={xs[i] ?? 0} y={Math.floor(h * 0.8)} textAnchor="middle">
-              {ch}
-            </text>
-          ))}
-        </g>
+          {T}
+        </text>
       </svg>
     </div>
   );
@@ -104,7 +137,7 @@ function PosterStory({
       <div
         style={{
           position: "absolute",
-          top: 620,
+          top: 820,
           left: 72,
           right: 72,
           display: "flex",
