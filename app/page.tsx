@@ -27,10 +27,9 @@ const TRACKS: string[] = [
 ];
 
 // ---------------- LOOK ----------------
-const BG_URL = "https://www.rosalia.com/images/rl-wide.jpg";
+const DEFAULT_BG = "https://www.rosalia.com/images/rl-wide.jpg";
 const palette = { ink: "#111", gold: "#b99251" };
 const W = 1080, H = 1920;
-
 const toUpperPretty = (s: string) => s.toLocaleUpperCase();
 
 // =============== JUSTIFIED LINE (SVG, pixel-perfect) ===============
@@ -38,7 +37,7 @@ const toUpperPretty = (s: string) => s.toLocaleUpperCase();
  * Renglón tipográfico como SVG:
  * - Ocupa el 100% del ancho.
  * - Distribuye cada carácter con posiciones x fijas.
- * - Auto-ajusta la fuente para que quepa (binary search).
+ * - Auto-ajusta la fuente (binary search) para que quepa visualmente.
  */
 function JustifiedLine({
   text,
@@ -57,7 +56,6 @@ function JustifiedLine({
   const [fs, setFs] = useState(max);
   const [w, setW] = useState(0);
   const [h, setH] = useState(Math.ceil(max * 1.12));
-
   const letters = [...text.replace(/\s+/g, " ")];
 
   useEffect(() => {
@@ -103,31 +101,20 @@ function JustifiedLine({
 
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>
-      <svg
-        width="100%"
-        height={h}
-        viewBox={`0 0 ${Math.max(1, w)} ${h}`}
-        preserveAspectRatio="none"
-      >
+      <svg width="100%" height={h} viewBox={`0 0 ${Math.max(1, w)} ${h}`} preserveAspectRatio="none">
         <g
           fontFamily={family}
           fontSize={fs}
           fill={color}
           dominantBaseline="alphabetic"
-          // Desactivar ligaduras/kerning vía CSS para evitar medidas sorpresivas
+          // desactivar ligaduras/kerning para medidas consistentes
           style={{
             fontKerning: "none" as any,
-            // Desactiva liga/clig (equivalente a font-variant-ligatures: none)
             fontFeatureSettings: '"liga" 0, "clig" 0',
           }}
         >
           {letters.map((ch, i) => (
-            <text
-              key={i}
-              x={xs[i] ?? 0}
-              y={Math.floor(h * 0.82)}
-              textAnchor="middle"
-            >
+            <text key={i} x={xs[i] ?? 0} y={Math.floor(h * 0.82)} textAnchor="middle">
               {ch === " " ? " " : ch}
             </text>
           ))}
@@ -138,7 +125,21 @@ function JustifiedLine({
 }
 
 // ================= POSTER =================
-function PosterStory({ top, name }: { top: string[]; name?: string }) {
+function PosterStory({
+  top,
+  name,
+  bgUrl,
+  showHeader = true,
+  listTop = 520,
+  listBottom = 190,
+}: {
+  top: string[];
+  name?: string;
+  bgUrl: string;
+  showHeader?: boolean;
+  listTop?: number;
+  listBottom?: number;
+}) {
   const base = top.length <= 5 ? 100 : top.length <= 6 ? 92 : top.length <= 7 ? 86 : 80;
 
   return (
@@ -148,7 +149,7 @@ function PosterStory({ top, name }: { top: string[]; name?: string }) {
         width: W, height: H, position: "relative", overflow: "hidden",
         borderRadius: 36, boxShadow: "0 40px 120px rgba(0,0,0,.55)",
         fontFamily: "'Times New Roman', Times, serif",
-        background: `url(${BG_URL}) center/cover no-repeat`,
+        background: `url(${bgUrl}) center/cover no-repeat`,
       }}
     >
       {/* Velo */}
@@ -162,20 +163,22 @@ function PosterStory({ top, name }: { top: string[]; name?: string }) {
         border: `2px solid ${palette.gold}`, borderRadius: 28, pointerEvents: "none",
       }} />
 
-      {/* Header compacto */}
-      <div style={{ position: "absolute", top: 96, left: 72, right: 72, textAlign: "center", color: palette.ink }}>
-        <div style={{ letterSpacing: "1.2em", opacity: .8, fontSize: 30 }}>R O S A L Í A</div>
-        <div style={{ marginTop: 8, letterSpacing: "0.32em", lineHeight: .9, fontSize: 120 }}>
-          <span style={{ fontWeight: 700 }}>L</span><span> U X</span>
+      {/* Header opcional */}
+      {showHeader && (
+        <div style={{ position: "absolute", top: 96, left: 72, right: 72, textAlign: "center", color: palette.ink }}>
+          <div style={{ letterSpacing: "1.2em", opacity: .8, fontSize: 30 }}>R O S A L Í A</div>
+          <div style={{ marginTop: 8, letterSpacing: "0.32em", lineHeight: .9, fontSize: 120 }}>
+            <span style={{ fontWeight: 700 }}>L</span><span> U X</span>
+          </div>
+          <div style={{ marginTop: 6, letterSpacing: "0.16em", opacity: .8, fontSize: 28 }}>M I &nbsp; T O P · 2 0 2 5</div>
         </div>
-        <div style={{ marginTop: 6, letterSpacing: "0.16em", opacity: .8, fontSize: 28 }}>M I &nbsp; T O P · 2 0 2 5</div>
-      </div>
+      )}
 
       {/* Lista (SVG por línea) */}
       <div
         style={{
           position: "absolute",
-          top: 520, bottom: 190, left: 72, right: 72,
+          top: listTop, bottom: listBottom, left: 72, right: 72,
           display: "flex", flexDirection: "column", gap: 16, color: palette.ink,
         }}
       >
@@ -214,6 +217,10 @@ function PosterStory({ top, name }: { top: string[]; name?: string }) {
 export default function LuxViral() {
   const [selected, setSelected] = useState<string[]>([]);
   const [name, setName] = useState<string>("");
+  const [bgUrl, setBgUrl] = useState<string>(DEFAULT_BG);
+  const [showHeader, setShowHeader] = useState<boolean>(false); // si tu imagen ya trae título
+  const [listTop, setListTop] = useState<number>(520);
+  const [listBottom, setListBottom] = useState<number>(190);
 
   const remaining = useMemo(() => TRACKS.filter(t => !selected.includes(t)), [selected]);
   const limit = 8;
@@ -225,6 +232,7 @@ export default function LuxViral() {
     const node = document.getElementById("lux-story");
     if (!node) return;
     try { /* @ts-ignore */ await document.fonts?.ready; } catch {}
+    // 2 frames: aseguramos medición/posicionamiento de SVGs
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const canvas = await html2canvas(node as HTMLElement, {
@@ -240,12 +248,20 @@ export default function LuxViral() {
     a.click();
   };
 
+  // handlers
+  const onPickBg: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    setBgUrl(url);
+  };
+
   const scale = 0.36;
 
   return (
     <div style={{
       minHeight: "100vh",
-      background: `url(${BG_URL}) center/cover fixed no-repeat`,
+      background: `url(${bgUrl}) center/cover fixed no-repeat`,
       fontFamily: "'Times New Roman', Times, serif",
     }}>
       <div style={{ background: "rgba(255,255,255,.86)" }}>
@@ -312,25 +328,22 @@ export default function LuxViral() {
 
             {/* Nombre + acciones */}
             <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <label style={{ minWidth: 92, fontSize: 14, opacity: .85 }}>Tu nombre:</label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej.: Gastón Ruiz"
                   style={{
-                    flex: 1, padding: "10px 12px", borderRadius: 10,
+                    flex: 1, minWidth: 220, padding: "10px 12px", borderRadius: 10,
                     border: "1px solid rgba(0,0,0,.2)", background: "#fff",
                   }}
                 />
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={undo}
                   disabled={selected.length === 0}
                   style={{
-                    flex: 1, padding: "12px 14px", borderRadius: 14,
+                    padding: "10px 14px", borderRadius: 12,
                     border: "1px solid rgba(0,0,0,.2)", background: "#fff",
                     color: palette.ink, fontWeight: 600,
                     opacity: selected.length === 0 ? 0.5 : 1,
@@ -344,9 +357,13 @@ export default function LuxViral() {
                   onClick={exportPNG}
                   disabled={selected.length === 0}
                   style={{
-                    flex: 2, padding: "12px 14px", borderRadius: 14,
-                    border: `1px solid ${palette.gold}`, background: palette.gold,
-                    color: "#fff", fontWeight: 700, letterSpacing: ".04em",
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: `1px solid ${palette.gold}`,
+                    background: palette.gold,
+                    color: "#fff",
+                    fontWeight: 700,
+                    letterSpacing: ".04em",
                     boxShadow: "0 14px 40px rgba(185,146,81,.35)",
                     opacity: selected.length === 0 ? 0.6 : 1,
                   }}
@@ -356,6 +373,34 @@ export default function LuxViral() {
                   Generar historia 1080×1920
                 </button>
               </div>
+
+              {/* Fondo y layout */}
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <label style={{ minWidth: 92, fontSize: 14, opacity: .85 }}>Fondo:</label>
+                  <input type="file" accept="image/*" onChange={onPickBg} />
+                  <input
+                    type="url"
+                    placeholder="o pegá una URL https://..."
+                    onChange={(e) => setBgUrl(e.target.value)}
+                    style={{ flex: 1, minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,.2)" }}
+                  />
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
+                    <input type="checkbox" checked={showHeader} onChange={(e) => setShowHeader(e.target.checked)} />
+                    Mostrar header “LUX”
+                  </label>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "200px 1fr 76px", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 13, opacity: .85 }}>Margen superior del ranking</span>
+                  <input type="range" min={360} max={760} value={listTop} onChange={(e)=>setListTop(parseInt(e.target.value))} />
+                  <span style={{ fontSize: 13 }}>{listTop}px</span>
+
+                  <span style={{ fontSize: 13, opacity: .85 }}>Margen inferior del ranking</span>
+                  <input type="range" min={120} max={320} value={listBottom} onChange={(e)=>setListBottom(parseInt(e.target.value))} />
+                  <span style={{ fontSize: 13 }}>{listBottom}px</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -363,7 +408,14 @@ export default function LuxViral() {
           <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
             <div style={{ width: W * scale, height: H * scale, position: "relative" }}>
               <div style={{ transformOrigin: "top left", transform: `scale(${scale})` }}>
-                <PosterStory top={selected.slice(0, limit)} name={name || undefined} />
+                <PosterStory
+                  top={selected.slice(0, limit)}
+                  name={name || undefined}
+                  bgUrl={bgUrl}
+                  showHeader={showHeader}
+                  listTop={listTop}
+                  listBottom={listBottom}
+                />
               </div>
             </div>
           </div>
