@@ -17,10 +17,10 @@ const TRACKS: string[] = [
   "De Madrugá",
   "Dios Es Un Stalker",
   "La Yugular",
-  "Focu ‘ranni",
+  "Focu ‘ranni [physical exclusive]",
   "Sauvignon Blanc",
-  "Jeanne",
-  "Novia Robot",
+  "Jeanne [physical exclusive]",
+  "Novia Robot [physical exclusive]",
   "La Rumba Del Perdón",
   "Memória",
   "Magnolias",
@@ -35,10 +35,10 @@ const toUpperPretty = (s: string) => s.toLocaleUpperCase();
 
 // =============== JUSTIFIED LINE (SVG, pixel-perfect) ===============
 /**
- * Renderiza un renglón tipográfico como SVG:
+ * Renglón tipográfico como SVG:
  * - Ocupa el 100% del ancho.
- * - Distribuye cada carácter con x fijas (sin ligaduras ni kerning).
- * - Ajusta automáticamente la fuente para que quepa (binary search).
+ * - Distribuye cada carácter con posiciones x fijas.
+ * - Auto-ajusta la fuente para que quepa (binary search).
  */
 function JustifiedLine({
   text,
@@ -56,11 +56,10 @@ function JustifiedLine({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [fs, setFs] = useState(max);
   const [w, setW] = useState(0);
-  const [h, setH] = useState(Math.ceil(max * 1.12)); // alto del SVG
+  const [h, setH] = useState(Math.ceil(max * 1.12));
 
   const letters = [...text.replace(/\s+/g, " ")];
 
-  // medir ancho del contenedor y auto-fit de fuente
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -69,17 +68,15 @@ function JustifiedLine({
       const box = el.getBoundingClientRect();
       const width = Math.max(0, Math.floor(box.width));
       setW(width);
-      // auto-fit por altura disponible del renglón (aprox 1.12x fs)
-      // reducimos si el nombre es MUY largo (más letras => un poco menos de fs)
+
       const len = letters.filter(c => c !== " ").length || 1;
-      const penalty = Math.max(0, len - 14) * 1.2; // suaviza títulos larguísimos
+      const penalty = Math.max(0, len - 14) * 1.2; // suaviza títulos largos
       const hi = Math.max(min, max - penalty);
+
       let lo = min, hi2 = hi, best = min;
-      // búsqueda binaria para evitar overflow vertical
       for (let i = 0; i < 10; i++) {
         const mid = Math.floor((lo + hi2) / 2);
         const estHeight = Math.ceil(mid * 1.12);
-        // nunca usamos “wrap”; solo verificamos que el SVG quepa en la fila
         if (estHeight <= Math.max(38, hi * 1.12)) {
           best = mid; lo = mid + 1;
         } else {
@@ -94,9 +91,8 @@ function JustifiedLine({
     ro.observe(el);
     Promise.resolve().then(() => requestAnimationFrame(measure));
     return () => ro.disconnect();
-  }, [text]);
+  }, [text, max, min, letters]);
 
-  // posiciones x para cada letra (distribución equidistante a lo ancho)
   const xs = useMemo(() => {
     const slots = letters.length;
     if (!w || slots === 0) return [] as number[];
@@ -117,15 +113,19 @@ function JustifiedLine({
           fontFamily={family}
           fontSize={fs}
           fill={color}
-          fontVariantLigatures="none"
-          style={{ fontKerning: "none" as any }}
           dominantBaseline="alphabetic"
+          // Desactivar ligaduras/kerning vía CSS para evitar medidas sorpresivas
+          style={{
+            fontKerning: "none" as any,
+            // Desactiva liga/clig (equivalente a font-variant-ligatures: none)
+            fontFeatureSettings: '"liga" 0, "clig" 0',
+          }}
         >
           {letters.map((ch, i) => (
             <text
               key={i}
               x={xs[i] ?? 0}
-              y={Math.floor(h * 0.82)} // baseline aproximada
+              y={Math.floor(h * 0.82)}
               textAnchor="middle"
             >
               {ch === " " ? " " : ch}
@@ -139,7 +139,6 @@ function JustifiedLine({
 
 // ================= POSTER =================
 function PosterStory({ top, name }: { top: string[]; name?: string }) {
-  // tamaños base seguros por cantidad de líneas
   const base = top.length <= 5 ? 100 : top.length <= 6 ? 92 : top.length <= 7 ? 86 : 80;
 
   return (
@@ -172,7 +171,7 @@ function PosterStory({ top, name }: { top: string[]; name?: string }) {
         <div style={{ marginTop: 6, letterSpacing: "0.16em", opacity: .8, fontSize: 28 }}>M I &nbsp; T O P · 2 0 2 5</div>
       </div>
 
-      {/* Lista (SVG por línea, nunca se pisa) */}
+      {/* Lista (SVG por línea) */}
       <div
         style={{
           position: "absolute",
@@ -226,14 +225,13 @@ export default function LuxViral() {
     const node = document.getElementById("lux-story");
     if (!node) return;
     try { /* @ts-ignore */ await document.fonts?.ready; } catch {}
-    // dos frames: garantizamos que los SVG terminaron de medir
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const canvas = await html2canvas(node as HTMLElement, {
       backgroundColor: null,
       useCORS: true,
       scale: 3,
-      foreignObjectRendering: true, // mejora rasterización de SVG embebidos
+      foreignObjectRendering: true,
     });
 
     const a = document.createElement("a");
@@ -242,7 +240,6 @@ export default function LuxViral() {
     a.click();
   };
 
-  // preview centrado y con tamaño reservado
   const scale = 0.36;
 
   return (
@@ -320,7 +317,7 @@ export default function LuxViral() {
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej.: La Rosalía"
+                  placeholder="Ej.: Gastón Ruiz"
                   style={{
                     flex: 1, padding: "10px 12px", borderRadius: 10,
                     border: "1px solid rgba(0,0,0,.2)", background: "#fff",
@@ -353,10 +350,10 @@ export default function LuxViral() {
                     boxShadow: "0 14px 40px rgba(185,146,81,.35)",
                     opacity: selected.length === 0 ? 0.6 : 1,
                   }}
-                  title="Generar Ranking"
+                  title="Generar historia 1080×1920"
                 >
                   <Download size={18} style={{ marginTop: -3, marginRight: 6 }} />
-                  Generar Ranking
+                  Generar historia 1080×1920
                 </button>
               </div>
             </div>
