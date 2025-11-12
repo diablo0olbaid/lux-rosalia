@@ -33,7 +33,7 @@ const BG_URL = "/lux-final-bg.jpg"; // poné el JPG en /public con este nombre
 const INK = "#292929";
 const GOLD = "#b99251";
 
-const LIST_TOP = 1000;   // mové esto si querés subir/bajar el bloque
+const LIST_TOP = 1100;   // mové esto si querés subir/bajar el bloque
 const LEFT = 84;
 const RIGHT = 84;
 const NUM_COL = 120;
