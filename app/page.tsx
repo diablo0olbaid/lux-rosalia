@@ -10,7 +10,7 @@ const TRACKS = [
   "Reliquia",
   "Divinize",
   "Porcelana",
-  "Mio Cristo Piange Diamanti",
+  "Mio Cristo",
   "Berghain",
   "La Perla",
   "Mundo Nuevo",
@@ -35,12 +35,12 @@ const palette = {
   mist: "#b9c7ff",
 };
 
-function clamp(n, min, max) {
+function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
 function useDragSort(items, setItems) {
-  const dragIndex = useRef(-1);
+  const dragIndex = useRef<number>(-1);
   const onDragStart = (idx) => (e) => {
     dragIndex.current = idx;
     e.dataTransfer.effectAllowed = "move";
