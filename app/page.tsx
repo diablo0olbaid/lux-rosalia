@@ -111,7 +111,7 @@ function FitLine({
 function Poster({
   top,
   name,
-  listTop = 620,
+  listTop = 800,
   listBottom = 220,
 }: {
   top: string[];
