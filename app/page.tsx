@@ -2,20 +2,16 @@
 
 import React, { useMemo, useState } from "react";
 import html2canvas from "html2canvas";
-import { Download, Share2, Image as ImgIcon, ArrowUp, ArrowDown } from "lucide-react";
+import { Download, Share2, ArrowUp, ArrowDown, Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// =============================
-// LUX – Angelical Cinematográfica (MOBILE-FIRST, Story 1080x1920)
-// Estética: azules profundos, halo dorado, vidrio suave
-// =============================
-
+// ---------- TRACKLIST (con nombre corregido) ----------
 const TRACKS: string[] = [
   "Sexo, Violencia y Llantas",
   "Reliquia",
   "Divinize",
   "Porcelana",
-  "Mio Cristo",
+  "Mio Cristo Piange Diamanti",
   "Berghain",
   "La Perla",
   "Mundo Nuevo",
@@ -31,21 +27,20 @@ const TRACKS: string[] = [
   "Magnolias",
 ];
 
-// Paleta inspirada en el sitio oficial (azules etéreos + dorado)
+// ---------- ESTILO ----------
 const palette = {
-  bg1: "#070b2a", // casi negro azulado
-  bg2: "#0e1b5c", // azul medianoche
-  bg3: "#1b2f8a", // azul real
-  ink: "#f7f8ff", // blanco suave
-  mist: "#cbd6ff", // neblina
-  gold: "#d7b467", // dorado
-  goldDim: "#b39243",
+  ink: "#161616",
+  paper: "#f3f3f1",
+  gold: "#b99251",
+  goldDark: "#94723d",
+  whiteInk: "#f7f7f7",
 };
 
-function clamp(n: number, min: number, max: number): number {
+const TEXTURE_URL = "/lux-texture.jpg"; // <— poné la imagen en public/ con este nombre
+
+function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
-
 function move<T>(arr: T[], from: number, to: number): T[] {
   const next = [...arr];
   const [m] = next.splice(from, 1);
@@ -53,77 +48,69 @@ function move<T>(arr: T[], from: number, to: number): T[] {
   return next;
 }
 
-function Halo() {
-  return (
-    <svg viewBox="0 0 1200 1200" className="absolute inset-0 w-full h-full" aria-hidden>
-      <defs>
-        <radialGradient id="luxHalo" cx="50%" cy="35%" r="60%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.40" />
-          <stop offset="45%" stopColor="#d7e2ff" stopOpacity="0.16" />
-          <stop offset="80%" stopColor="#9ab0ff" stopOpacity="0.06" />
-          <stop offset="100%" stopColor="#6c81ff" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <rect width="1200" height="1200" fill="url(#luxHalo)" />
-      <g opacity="0.9">
-        <circle cx="600" cy="360" r="230" fill="none" stroke={palette.gold} strokeWidth="3" />
-        <circle cx="600" cy="360" r="240" fill="none" stroke={palette.goldDim} strokeOpacity="0.5" />
-      </g>
-    </svg>
-  );
-}
-
+// ---------- POSTER STORY 1080x1920 ----------
 function PosterStory({
-  title,
-  subtitle,
-  year,
   top,
-  bgImage,
   username,
+  bgUrl = TEXTURE_URL,
 }: {
-  title: string;
-  subtitle: string;
-  year: string | number;
   top: string[];
-  bgImage?: string;
   username?: string;
+  bgUrl?: string;
 }) {
-  // Story: 1080x1920 – export nativo
-  const W = 1080, H = 1920;
+  const W = 1080,
+    H = 1920;
+
   return (
     <div
       id="lux-story"
-      className="relative rounded-[32px] overflow-hidden shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
-      style={{ width: W, height: H, background: `linear-gradient(180deg, ${palette.bg1} 0%, ${palette.bg2} 45%, ${palette.bg3} 100%)` }}
+      className="relative overflow-hidden rounded-[36px] shadow-[0_40px_120px_rgba(0,0,0,0.55)]"
+      style={{
+        width: W,
+        height: H,
+        background: `url(${bgUrl}) center/cover no-repeat`,
+        fontFamily: `'Times New Roman', Times, serif`,
+      }}
     >
-      {bgImage && (
-        <img src={bgImage} alt="bg" className="absolute inset-0 w-full h-full object-cover opacity-[0.18]" />
-      )}
+      {/* Velo suave y viñeta */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,.78) 48%, rgba(255,255,255,.82) 100%)",
+          boxShadow: "inset 0 0 260px rgba(0,0,0,0.35)",
+        }}
+      />
 
-      {/* Vignette para cine */}
-      <div className="absolute inset-0" style={{ boxShadow: "inset 0 0 260px rgba(0,0,0,0.45)" }} />
+      {/* Header: R O S A L Í A */}
+      <div className="absolute top-24 left-0 right-0 text-center px-10 select-none">
+        <div
+          className="tracking-[1.2em] text-[28px] sm:text-[32px]"
+          style={{ color: palette.ink, opacity: 0.85 }}
+        >
+          R O S A L Í A
+        </div>
 
-      {/* Halo */}
-      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[140%] h-[70%]">
-        <Halo />
+        {/* Título L U X — L en negrita */}
+        <div
+          className="mt-6 text-[120px] sm:text-[140px] leading-none"
+          style={{ color: palette.ink, letterSpacing: "0.35em" }}
+        >
+          <span style={{ fontWeight: 700 }}>L</span>
+          <span style={{ fontWeight: 400 }}> U X</span>
+        </div>
+
+        <div
+          className="mt-6 text-[26px]"
+          style={{ color: palette.ink, opacity: 0.8, letterSpacing: "0.15em" }}
+        >
+          M I  T O P · 2 0 2 5
+        </div>
       </div>
 
-      {/* Header */}
-      <div className="absolute top-24 left-0 right-0 text-center px-10">
-        <div className="uppercase tracking-[0.40em] text-[30px] sm:text-[34px]" style={{ color: palette.mist }}>
-          ROSALÍA
-        </div>
-        <div className="mt-1 text-[120px] sm:text-[140px] leading-none font-light" style={{ color: palette.ink, letterSpacing: "0.01em" }}>
-          {title}
-        </div>
-        <div className="mt-3 text-[26px] sm:text-[28px]" style={{ color: palette.mist }}>
-          {subtitle} · {year}
-        </div>
-      </div>
-
-      {/* Ranking compacto para story */}
-      <div className="absolute left-10 right-10 bottom-24">
-        <div className="grid grid-cols-1 gap-6">
+      {/* Lista (tarjetas vidrio + ribete dorado) */}
+      <div className="absolute left-12 right-12 bottom-24">
+        <div className="grid grid-cols-1 gap-14">
           <AnimatePresence>
             {top.map((name, i) => (
               <motion.div
@@ -131,23 +118,32 @@ function PosterStory({
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.45 }}
-                className="flex items-center gap-4"
+                className="flex items-center gap-6"
               >
                 <div
-                  className="w-16 h-16 rounded-full grid place-items-center text-2xl font-semibold"
-                  style={{ background: palette.gold, color: "#1a1a1a", boxShadow: "0 8px 30px rgba(215,180,103,0.45)" }}
+                  className="w-20 h-20 rounded-full grid place-items-center text-[28px] leading-none"
+                  style={{
+                    background: palette.gold,
+                    color: "white",
+                    boxShadow: "0 8px 30px rgba(185,146,81,0.45)",
+                    fontWeight: 700,
+                  }}
                 >
                   {i + 1}
                 </div>
+
                 <div
-                  className="flex-1 p-5 rounded-3xl border backdrop-blur-[8px]"
+                  className="flex-1 p-8 rounded-[28px] border backdrop-blur-[6px]"
                   style={{
-                    borderColor: "rgba(255,255,255,0.18)",
-                    background: "linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03))",
+                    borderColor: "rgba(0,0,0,0.15)",
+                    background:
+                      "linear-gradient(90deg, rgba(255,255,255,0.55), rgba(255,255,255,0.35))",
                     color: palette.ink,
+                    fontSize: 30,
+                    lineHeight: 1.15,
                   }}
                 >
-                  <div className="text-[26px] leading-tight tracking-wide">{name}</div>
+                  {name}
                 </div>
               </motion.div>
             ))}
@@ -155,37 +151,59 @@ function PosterStory({
         </div>
 
         {/* Footer */}
-        <div className="mt-10 flex items-center justify-between">
-          <div className="uppercase tracking-[0.35em] text-sm" style={{ color: palette.mist }}>
-            Mi Top LUX
+        <div
+          className="mt-12 flex items-center justify-between"
+          style={{ color: palette.ink, fontSize: 18 }}
+        >
+          <div
+            className="tracking-[0.35em]"
+            style={{ opacity: 0.75, textTransform: "uppercase" }}
+          >
+            Fan ranking
           </div>
-          <div className="text-sm" style={{ color: palette.gold }}>
+          <div style={{ color: palette.gold, fontWeight: 700 }}>
             {username ? `@${username}` : "#LUXTop"}
           </div>
         </div>
       </div>
+
+      {/* Borde dorado fino */}
+      <div
+        className="absolute inset-4 rounded-[30px] pointer-events-none"
+        style={{ border: `2px solid ${palette.gold}`, opacity: 0.8 }}
+      />
     </div>
   );
 }
 
-export default function LuxStoryApp() {
-  const [tracks, setTracks] = useState<string[]>(TRACKS);
+// ---------- APP ----------
+export default function LuxWrapped() {
+  // Dos paneles: Disponibles + Tu selección (estilo Receiptify)
+  const [available] = useState<string[]>(TRACKS);
+  const [selected, setSelected] = useState<string[]>([]);
   const [topN, setTopN] = useState<number>(5);
-  const [bgImage, setBgImage] = useState<string>("");
   const [username, setUsername] = useState<string>("");
 
-  const top = useMemo(() => tracks.slice(0, clamp(topN, 1, 10)), [tracks, topN]);
+  const top = useMemo(
+    () => selected.slice(0, clamp(topN, 1, 10)),
+    [selected, topN]
+  );
 
-  const onChangeBg: React.ChangeEventHandler<HTMLInputElement> = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setBgImage(URL.createObjectURL(f));
+  const addTrack = (t: string) => {
+    if (selected.includes(t)) return;
+    setSelected((prev) => [...prev, t]);
   };
+  const removeTrack = (t: string) =>
+    setSelected((prev) => prev.filter((x) => x !== t));
 
   const exportPNG = async () => {
     const node = document.getElementById("lux-story");
     if (!node) return;
-    const canvas = await html2canvas(node as HTMLElement, { backgroundColor: null, useCORS: true, scale: 2 });
+    const canvas = await html2canvas(node as HTMLElement, {
+      backgroundColor: null,
+      useCORS: true,
+      scale: 2,
+    });
     const data = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = data;
@@ -196,148 +214,216 @@ export default function LuxStoryApp() {
   const tryShare = async () => {
     const node = document.getElementById("lux-story");
     if (!node) return exportPNG();
-    const canvas = await html2canvas(node as HTMLElement, { backgroundColor: null, useCORS: true, scale: 2 });
+    const canvas = await html2canvas(node as HTMLElement, {
+      backgroundColor: null,
+      useCORS: true,
+      scale: 2,
+    });
     const blob = await (await fetch(canvas.toDataURL("image/png"))).blob();
-    const file = new File([blob], `LUX-story-${Date.now()}.png`, { type: "image/png" });
+    const file = new File([blob], `LUX-story-${Date.now()}.png`, {
+      type: "image/png",
+    });
     // @ts-ignore
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       // @ts-ignore
-      await navigator.share({ files: [file], title: "Mi Top LUX", text: "Mi Top LUX" });
+      await navigator.share({
+        files: [file],
+        title: "Mi Top LUX",
+        text: "Mi Top LUX",
+      });
     } else {
       exportPNG();
     }
   };
 
-  // —— UI MOBILE-FIRST ——
+  // ---------- UI (MOBILE FIRST) ----------
   return (
     <div
       className="min-h-screen w-full"
       style={{
-        background: `radial-gradient(1600px 1000px at 20% -10%, #2338a0 0%, ${palette.bg2} 35%, ${palette.bg1} 70%)`,
+        background: `url(${TEXTURE_URL}) center/cover fixed no-repeat`,
+        fontFamily: `'Times New Roman', Times, serif`,
       }}
     >
-      <div className="max-w-[900px] mx-auto px-4 md:px-6 py-6 md:py-10">
-        {/* Toolbar compacta para mobile */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-semibold" style={{ color: palette.ink }}>
-              LUX – Historia Compartible
-            </h1>
-            <p className="text-xs md:text-sm mt-1" style={{ color: palette.mist }}>
-              Elegí tu Top y generá la imagen 1080×1920 lista para IG.
+      <div
+        className="min-h-screen w-full"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,.80) 0%, rgba(255,255,255,.86) 45%, rgba(255,255,255,.92) 100%)",
+        }}
+      >
+        <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-8 md:py-12">
+          {/* Hero simple */}
+          <div className="text-center mb-6">
+            <div
+              className="tracking-[1.2em] text-sm md:text-base"
+              style={{ color: palette.ink, opacity: 0.75 }}
+            >
+              R O S A L Í A
+            </div>
+            <div
+              className="mt-2 text-4xl md:text-5xl leading-none"
+              style={{ color: palette.ink, letterSpacing: "0.35em" }}
+            >
+              <span style={{ fontWeight: 700 }}>L</span>
+              <span> U X</span>
+            </div>
+            <p
+              className="mt-3 text-xs md:text-sm"
+              style={{ color: palette.ink, opacity: 0.8 }}
+            >
+              Elegí y ordená tus favoritas · exportá una historia 1080×1920
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label
-              className="px-3 py-2 rounded-xl border cursor-pointer text-sm"
-              style={{ borderColor: "rgba(255,255,255,0.2)", color: palette.ink }}
-            >
-              <ImgIcon size={16} /> Fondo
-              <input type="file" accept="image/*" className="hidden" onChange={onChangeBg} />
-            </label>
-            <button
-              onClick={exportPNG}
-              className="px-3 py-2 rounded-xl font-medium border text-sm"
-              style={{ color: palette.ink, borderColor: "rgba(255,255,255,0.2)" }}
-            >
-              <Download size={16} className="inline -mt-1 mr-1" /> PNG
-            </button>
-            <button
-              onClick={tryShare}
-              className="px-3 py-2 rounded-xl font-medium border text-sm"
-              style={{ color: palette.ink, borderColor: "rgba(255,255,255,0.2)" }}
-            >
-              <Share2 size={16} className="inline -mt-1 mr-1" /> Compartir
-            </button>
-          </div>
-        </div>
 
-        {/* Controles de ranking (SIN escribir; tap-friendly) */}
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div
-            className="rounded-2xl p-4 border"
-            style={{ borderColor: "rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.03)" }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm" style={{ color: palette.mist }}>
-                Ordená tu Top (tap en ▲▼)
-              </span>
-              <div className="flex items-center gap-3 text-sm" style={{ color: palette.mist }}>
-                <span>Top</span>
-                <input
-                  type="range"
-                  min={3}
-                  max={10}
-                  value={topN}
-                  onChange={(e) => setTopN(parseInt(e.target.value, 10))}
-                />
-                <span className="w-8 text-center" style={{ color: palette.ink }}>
-                  {topN}
-                </span>
+          {/* Controles principales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Disponibles */}
+            <div
+              className="rounded-2xl p-4 border"
+              style={{
+                borderColor: "rgba(0,0,0,0.12)",
+                background: "rgba(255,255,255,0.7)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base" style={{ color: palette.ink }}>
+                  Canciones disponibles
+                </h3>
               </div>
+              <ul className="space-y-2 max-h-[50vh] overflow-auto pr-1">
+                {available.map((t) => (
+                  <li
+                    key={t}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border"
+                    style={{ borderColor: "rgba(0,0,0,0.12)", color: palette.ink }}
+                  >
+                    <span className="flex-1 truncate">{t}</span>
+                    <button
+                      className="px-2 py-1 text-sm rounded-lg border"
+                      style={{ borderColor: "rgba(0,0,0,0.15)", color: palette.ink }}
+                      onClick={() => addTrack(t)}
+                    >
+                      <Plus size={16} className="inline -mt-1 mr-1" />
+                      Agregar
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ol className="space-y-2 max-h-[52vh] md:max-h-[420px] overflow-auto pr-1">
-              {tracks.map((t, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl border"
-                  style={{ borderColor: "rgba(255,255,255,0.15)", color: palette.ink }}
-                >
-                  <span className="w-6 opacity-70">{i + 1}</span>
-                  <span className="flex-1 truncate">{t}</span>
-                  <button
-                    aria-label="Subir"
-                    className="p-1 rounded-lg border"
-                    style={{ borderColor: "rgba(255,255,255,0.15)" }}
-                    onClick={() => i > 0 && setTracks(move(tracks, i, i - 1)))}
+
+            {/* Tu selección */}
+            <div
+              className="rounded-2xl p-4 border"
+              style={{
+                borderColor: "rgba(0,0,0,0.12)",
+                background: "rgba(255,255,255,0.7)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base" style={{ color: palette.ink }}>
+                  Tu selección
+                </h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm" style={{ color: palette.ink, opacity: 0.75 }}>
+                    Top
+                  </span>
+                  <input
+                    type="range"
+                    min={3}
+                    max={10}
+                    value={topN}
+                    onChange={(e) => setTopN(parseInt(e.target.value, 10))}
+                  />
+                  <span style={{ color: palette.ink }}>{topN}</span>
+                </div>
+              </div>
+
+              <ol className="space-y-2 max-h-[50vh] overflow-auto pr-1">
+                {selected.map((t, i) => (
+                  <li
+                    key={t}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border"
+                    style={{ borderColor: "rgba(0,0,0,0.12)", color: palette.ink }}
                   >
-                    <ArrowUp size={16} />
-                  </button>
-                  <button
-                    aria-label="Bajar"
-                    className="p-1 rounded-lg border"
-                    style={{ borderColor: "rgba(255,255,255,0.15)" }}
-                    onClick={() =>
-                      i < tracks.length - 1 && setTracks(move(tracks, i, i + 1))
-                    }
-                  >
-                    <ArrowDown size={16} />
-                  </button>
-                </li>
-              ))}
-            </ol>
+                    <span className="w-6 opacity-70">{i + 1}</span>
+                    <span className="flex-1 truncate">{t}</span>
+                    <button
+                      aria-label="Subir"
+                      className="p-1 rounded-lg border"
+                      style={{ borderColor: "rgba(0,0,0,0.15)" }}
+                      onClick={() => i > 0 && setSelected(move(selected, i, i - 1))}
+                    >
+                      <ArrowUp size={16} />
+                    </button>
+                    <button
+                      aria-label="Bajar"
+                      className="p-1 rounded-lg border"
+                      style={{ borderColor: "rgba(0,0,0,0.15)" }}
+                      onClick={() =>
+                        i < selected.length - 1 && setSelected(move(selected, i, i + 1))
+                      }
+                    >
+                      <ArrowDown size={16} />
+                    </button>
+                    <button
+                      aria-label="Quitar"
+                      className="p-1 rounded-lg border"
+                      style={{ borderColor: "rgba(0,0,0,0.15)" }}
+                      onClick={() => removeTrack(t)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
 
-          {/* Preview responsive – escala automática para mobile */}
-          <div className="flex items-center justify-center">
-            <div className="[transform-origin:top_left] scale-[0.33] sm:scale-[0.45] md:scale-[0.6] lg:scale-[0.8] xl:scale-[1]">
-              <PosterStory
-                title="LUX"
-                subtitle="Mi Top"
-                year={"2025"}
-                top={top}
-                bgImage={bgImage}
-                username={username || undefined}
+          {/* Username + acciones */}
+          <div className="mt-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <label
+                className="text-sm"
+                style={{ color: palette.ink, opacity: 0.8, minWidth: 90 }}
+              >
+                Usuario:
+              </label>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="tu @usuario (opcional)"
+                className="px-3 py-2 rounded-lg bg-white/80 border w-full sm:w-72"
+                style={{ borderColor: "rgba(0,0,0,0.15)", color: palette.ink }}
               />
             </div>
-          </div>
-        </div>
 
-        {/* Username simple (opcional) */}
-        <div className="mt-3">
-          <label
-            className="block text-xs uppercase tracking-widest mb-1"
-            style={{ color: palette.mist }}
-          >
-            Usuario (opcional)
-          </label>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="tu @usuario"
-            className="w-full px-3 py-2 rounded-lg bg-transparent border"
-            style={{ borderColor: "rgba(255,255,255,0.2)", color: palette.ink }}
-          />
+            <div className="flex gap-2">
+              <button
+                onClick={exportPNG}
+                className="px-4 py-2 rounded-xl font-medium border"
+                style={{ color: palette.ink, borderColor: "rgba(0,0,0,0.2)" }}
+              >
+                <Download size={18} className="inline -mt-1 mr-2" />
+                Exportar PNG
+              </button>
+              <button
+                onClick={tryShare}
+                className="px-4 py-2 rounded-xl font-medium border"
+                style={{ color: palette.ink, borderColor: "rgba(0,0,0,0.2)" }}
+              >
+                <Share2 size={18} className="inline -mt-1 mr-2" />
+                Compartir
+              </button>
+            </div>
+          </div>
+
+          {/* PREVIEW story escalada (mobile-first) */}
+          <div className="mt-8 w-full flex items-center justify-center">
+            <div className="[transform-origin:top_left] scale-[0.34] sm:scale-[0.48] md:scale-[0.62] lg:scale-[0.8] xl:scale-[1]">
+              <PosterStory top={top} username={username || undefined} />
+            </div>
+          </div>
         </div>
       </div>
     </div>
