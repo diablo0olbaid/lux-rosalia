@@ -33,7 +33,7 @@ const BG_URL = "/lux-final-bg.jpg"; // poné el JPG en /public con este nombre
 const INK = "#292929";
 const GOLD = "#b99251";
 
-const LIST_TOP = 980;   // mové esto si querés subir/bajar el bloque
+const LIST_TOP = 1000;   // mové esto si querés subir/bajar el bloque
 const LEFT = 84;
 const RIGHT = 84;
 const NUM_COL = 120;
@@ -41,7 +41,7 @@ const GAP_COL = 18;
 const GAP_ROWS = 28;
 
 // TODAS las tipografías a 45px
-const FS = 45;
+const FS = 40;
 const TRACKING_EM = 0.12; // tracking sutil
 
 const roman = (n: number) => {
