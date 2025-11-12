@@ -260,6 +260,23 @@ export default function LuxRanking() {
           </div>
         </div>
       </div>
+   {/* FOOTER DE CRÉDITOS */}
+      <div
+        style={{
+          textAlign: "center",
+          fontSize: 14,
+          color: "#777",
+          marginTop: 60,
+          paddingBottom: 20,
+          fontFamily: "'Times New Roman', Times, serif",
+          lineHeight: 1.4,
+        }}
+      >
+        <div>© Todos los derechos reservados a Rosalía y Sony Music Entertainment</div>
+        <div>
+          Instagram: <b>@gastonruiz</b> &nbsp;|&nbsp; <b>@joaquinteross</b>
+        </div>
+      </div>
     </div>
   );
 }
