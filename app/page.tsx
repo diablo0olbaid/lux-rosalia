@@ -16,10 +16,10 @@ const TRACKS = [
   "De Madrugá",
   "Dios Es Un Stalker",
   "La Yugular",
-  "Focu ‘ranni [physical exclusive]",
+  "Focu ‘ranni",
   "Sauvignon Blanc",
-  "Jeanne [physical exclusive]",
-  "Novia Robot [physical exclusive]",
+  "Jeanne",
+  "Novia Robot",
   "La Rumba Del Perdón",
   "Memória",
   "Magnolias",
@@ -207,7 +207,7 @@ export default function LuxMinimal() {
             <b>LUX</b> RANKING
           </div>
           <p style={{ fontSize: 14 }}>
-            Elegí tus canciones y generá tu historia viral.
+            Elegí tus canciones y generá tu historia.
           </p>
         </div>
 
