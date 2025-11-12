@@ -4,8 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { Undo2, Download } from "lucide-react";
 
-// ---------------- DATA ----------------
-const TRACKS: string[] = [
+const TRACKS = [
   "Sexo, Violencia y Llantas",
   "Reliquia",
   "Divinize",
@@ -26,70 +25,29 @@ const TRACKS: string[] = [
   "Magnolias",
 ];
 
-// ---------------- LOOK ----------------
-const DEFAULT_BG = "https://www.rosalia.com/images/rl-wide.jpg";
-const palette = { ink: "#111", gold: "#b99251" };
 const W = 1080, H = 1920;
-const toUpperPretty = (s: string) => s.toLocaleUpperCase();
+const palette = { ink: "#111", gold: "#b99251" };
 
-// =============== JUSTIFIED LINE (SVG, pixel-perfect) ===============
-/**
- * Renglón tipográfico como SVG:
- * - Ocupa el 100% del ancho.
- * - Distribuye cada carácter con posiciones x fijas.
- * - Auto-ajusta la fuente (binary search) para que quepa visualmente.
- */
-function JustifiedLine({
-  text,
-  max = 88,
-  min = 26,
-  color = "#111",
-  family = "'Times New Roman', Times, serif",
-}: {
-  text: string;
-  max?: number;
-  min?: number;
-  color?: string;
-  family?: string;
-}) {
+// ========= Texto distribuido por carácter (centrado y justificado) =========
+function JustifiedLine({ text, max = 88 }: { text: string; max?: number }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [fs, setFs] = useState(max);
   const [w, setW] = useState(0);
-  const [h, setH] = useState(Math.ceil(max * 1.12));
+  const [h, setH] = useState(Math.ceil(max * 1.1));
   const letters = [...text.replace(/\s+/g, " ")];
 
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-
     const measure = () => {
       const box = el.getBoundingClientRect();
-      const width = Math.max(0, Math.floor(box.width));
-      setW(width);
-
-      const len = letters.filter(c => c !== " ").length || 1;
-      const penalty = Math.max(0, len - 14) * 1.2; // suaviza títulos largos
-      const hi = Math.max(min, max - penalty);
-
-      let lo = min, hi2 = hi, best = min;
-      for (let i = 0; i < 10; i++) {
-        const mid = Math.floor((lo + hi2) / 2);
-        const estHeight = Math.ceil(mid * 1.12);
-        if (estHeight <= Math.max(38, hi * 1.12)) {
-          best = mid; lo = mid + 1;
-        } else {
-          hi2 = mid - 1;
-        }
-      }
-      setFs(best);
-      setH(Math.ceil(best * 1.12));
+      setW(Math.max(0, Math.floor(box.width)));
     };
-
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     Promise.resolve().then(() => requestAnimationFrame(measure));
     return () => ro.disconnect();
-  }, [text, max, min, letters]);
+  }, [text]);
 
   const xs = useMemo(() => {
     const slots = letters.length;
@@ -101,21 +59,16 @@ function JustifiedLine({
 
   return (
     <div ref={wrapRef} style={{ width: "100%" }}>
-      <svg width="100%" height={h} viewBox={`0 0 ${Math.max(1, w)} ${h}`} preserveAspectRatio="none">
+      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
         <g
-          fontFamily={family}
+          fontFamily="'Times New Roman', Times, serif"
           fontSize={fs}
-          fill={color}
-          dominantBaseline="alphabetic"
-          // desactivar ligaduras/kerning para medidas consistentes
-          style={{
-            fontKerning: "none" as any,
-            fontFeatureSettings: '"liga" 0, "clig" 0',
-          }}
+          fill={palette.ink}
+          style={{ fontKerning: "none" as any, fontFeatureSettings: '"liga" 0, "clig" 0' }}
         >
           {letters.map((ch, i) => (
-            <text key={i} x={xs[i] ?? 0} y={Math.floor(h * 0.82)} textAnchor="middle">
-              {ch === " " ? " " : ch}
+            <text key={i} x={xs[i] ?? 0} y={Math.floor(h * 0.8)} textAnchor="middle">
+              {ch}
             </text>
           ))}
         </g>
@@ -124,299 +77,227 @@ function JustifiedLine({
   );
 }
 
-// ================= POSTER =================
+// ========= Poster solo con el ranking encima del fondo =========
 function PosterStory({
   top,
   name,
   bgUrl,
-  showHeader = true,
-  listTop = 520,
-  listBottom = 190,
 }: {
   top: string[];
   name?: string;
   bgUrl: string;
-  showHeader?: boolean;
-  listTop?: number;
-  listBottom?: number;
 }) {
-  const base = top.length <= 5 ? 100 : top.length <= 6 ? 92 : top.length <= 7 ? 86 : 80;
+  const base = top.length <= 5 ? 100 : top.length <= 6 ? 90 : top.length <= 7 ? 84 : 76;
 
   return (
     <div
       id="lux-story"
       style={{
-        width: W, height: H, position: "relative", overflow: "hidden",
-        borderRadius: 36, boxShadow: "0 40px 120px rgba(0,0,0,.55)",
+        width: W,
+        height: H,
+        position: "relative",
+        overflow: "hidden",
         fontFamily: "'Times New Roman', Times, serif",
         background: `url(${bgUrl}) center/cover no-repeat`,
       }}
     >
-      {/* Velo */}
-      <div style={{
-        position: "absolute", inset: 0,
-        background: "linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,255,255,.90) 40%, rgba(255,255,255,.95) 100%)",
-      }} />
-      {/* Marco dorado */}
-      <div style={{
-        position: "absolute", inset: 16,
-        border: `2px solid ${palette.gold}`, borderRadius: 28, pointerEvents: "none",
-      }} />
-
-      {/* Header opcional */}
-      {showHeader && (
-        <div style={{ position: "absolute", top: 96, left: 72, right: 72, textAlign: "center", color: palette.ink }}>
-          <div style={{ letterSpacing: "1.2em", opacity: .8, fontSize: 30 }}>R O S A L Í A</div>
-          <div style={{ marginTop: 8, letterSpacing: "0.32em", lineHeight: .9, fontSize: 120 }}>
-            <span style={{ fontWeight: 700 }}>L</span><span> U X</span>
-          </div>
-          <div style={{ marginTop: 6, letterSpacing: "0.16em", opacity: .8, fontSize: 28 }}>M I &nbsp; T O P · 2 0 2 5</div>
-        </div>
-      )}
-
-      {/* Lista (SVG por línea) */}
       <div
         style={{
           position: "absolute",
-          top: listTop, bottom: listBottom, left: 72, right: 72,
-          display: "flex", flexDirection: "column", gap: 16, color: palette.ink,
+          top: 620,
+          left: 72,
+          right: 72,
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          color: palette.ink,
         }}
       >
-        {top.map((nameSong, i) => (
-          <div key={nameSong} style={{ display: "grid", gridTemplateColumns: "70px 1fr", alignItems: "center", gap: 22 }}>
+        {top.map((t, i) => (
+          <div
+            key={t}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "70px 1fr",
+              alignItems: "center",
+              gap: 22,
+            }}
+          >
             <div
               style={{
-                width: 64, height: 64, borderRadius: 9999,
-                background: palette.gold, color: "#fff",
-                display: "grid", placeItems: "center",
-                fontWeight: 700, fontSize: 24,
-                boxShadow: "0 10px 28px rgba(185,146,81,.35)",
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                background: palette.gold,
+                color: "#fff",
+                display: "grid",
+                placeItems: "center",
+                fontWeight: 700,
+                fontSize: 24,
               }}
             >
               {i + 1}
             </div>
-            <JustifiedLine text={toUpperPretty(nameSong)} max={base} color={palette.ink} />
+            <JustifiedLine text={t.toUpperCase()} max={base} />
           </div>
         ))}
       </div>
 
-      {/* Footer */}
-      <div style={{
-        position: "absolute", left: 72, right: 72, bottom: 86,
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        color: palette.ink, fontSize: 20,
-      }}>
-        <div style={{ letterSpacing: ".35em", textTransform: "uppercase", opacity: .75 }}>Fan ranking</div>
-        <div style={{ color: palette.gold, fontWeight: 700 }}>{name ? name : "#LUXTop"}</div>
+      <div
+        style={{
+          position: "absolute",
+          right: 80,
+          bottom: 120,
+          color: palette.gold,
+          fontWeight: 700,
+          fontSize: 26,
+        }}
+      >
+        {name ? name : "#LUXTOP"}
       </div>
     </div>
   );
 }
 
-// ================= APP (UX SIMPLE) =================
-export default function LuxViral() {
+// ========= App principal =========
+export default function LuxMinimal() {
   const [selected, setSelected] = useState<string[]>([]);
-  const [name, setName] = useState<string>("");
-  const [bgUrl, setBgUrl] = useState<string>(DEFAULT_BG);
-  const [showHeader, setShowHeader] = useState<boolean>(false); // si tu imagen ya trae título
-  const [listTop, setListTop] = useState<number>(520);
-  const [listBottom, setListBottom] = useState<number>(190);
-
-  const remaining = useMemo(() => TRACKS.filter(t => !selected.includes(t)), [selected]);
+  const [name, setName] = useState("");
   const limit = 8;
 
-  const add = (t: string) => { if (selected.length < limit) setSelected(p => [...p, t]); };
-  const undo = () => setSelected(p => p.slice(0, -1));
+  // cambia esta línea por la URL de tu imagen en GitHub
+  const bgUrl = "/lux-final-bg.jpg"; // ej: public/lux-final-bg.jpg
+
+  const remaining = TRACKS.filter((t) => !selected.includes(t));
+  const add = (t: string) =>
+    selected.length < limit && setSelected((p) => [...p, t]);
+  const undo = () => setSelected((p) => p.slice(0, -1));
 
   const exportPNG = async () => {
     const node = document.getElementById("lux-story");
     if (!node) return;
-    try { /* @ts-ignore */ await document.fonts?.ready; } catch {}
-    // 2 frames: aseguramos medición/posicionamiento de SVGs
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
+    await new Promise((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(r))
+    );
     const canvas = await html2canvas(node as HTMLElement, {
       backgroundColor: null,
       useCORS: true,
       scale: 3,
       foreignObjectRendering: true,
     });
-
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
-    a.download = `LUX-story-${Date.now()}.png`;
+    a.download = `lux-ranking.png`;
     a.click();
-  };
-
-  // handlers
-  const onPickBg: React.ChangeEventHandler<HTMLInputElement> = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const url = URL.createObjectURL(f);
-    setBgUrl(url);
   };
 
   const scale = 0.36;
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: `url(${bgUrl}) center/cover fixed no-repeat`,
-      fontFamily: "'Times New Roman', Times, serif",
-    }}>
-      <div style={{ background: "rgba(255,255,255,.86)" }}>
-        <div style={{ maxWidth: 1060, margin: "0 auto", padding: "22px 14px 36px" }}>
-          {/* Cabecera */}
-          <div style={{ textAlign: "center", color: palette.ink, marginBottom: 10 }}>
-            <div style={{ letterSpacing: "1.2em", opacity: .75, fontSize: 14 }}>R O S A L Í A</div>
-            <div style={{ marginTop: 8, letterSpacing: ".35em", fontSize: 30 }}>
-              <span style={{ fontWeight: 700 }}>L</span><span> U X</span>
-            </div>
-            <div style={{ marginTop: 6, opacity: .75, fontSize: 13 }}>
-              Tocá para elegir tus favoritas <b>en orden</b> y generá la historia.
-            </div>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#fafafa",
+        fontFamily: "'Times New Roman', Times, serif",
+      }}
+    >
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 24, letterSpacing: ".3em" }}>
+            <b>LUX</b> RANKING
+          </div>
+          <p style={{ fontSize: 14 }}>
+            Elegí tus canciones y generá tu historia viral.
+          </p>
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 12,
+            border: "1px solid #ddd",
+            padding: 16,
+            marginBottom: 20,
+          }}
+        >
+          <div style={{ marginBottom: 8, fontSize: 15 }}>
+            Canciones ({selected.length}/{limit})
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {remaining.map((t) => (
+              <button
+                key={t}
+                onClick={() => add(t)}
+                style={{
+                  border: `1px solid ${palette.gold}`,
+                  background: "#fff",
+                  color: palette.gold,
+                  borderRadius: 9999,
+                  padding: "10px 14px",
+                  fontSize: 14,
+                }}
+              >
+                {t}
+              </button>
+            ))}
           </div>
 
-          {/* Selector: chips dorados */}
-          <div style={{
-            border: "1px solid rgba(0,0,0,.12)",
-            background: "rgba(255,255,255,.8)",
-            borderRadius: 18, padding: 12, color: palette.ink,
-          }}>
-            <div style={{ marginBottom: 8, fontSize: 16 }}>
-              Canciones (tap para agregar · {selected.length}/{limit})
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {remaining.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => add(t)}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 999,
-                    border: `1px solid ${palette.gold}`,
-                    background: "#fff",
-                    color: palette.gold,
-                    fontSize: 14,
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {/* Selección actual */}
-            {selected.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 6 }}>Tu orden:</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {selected.map((t, i) => (
-                    <span key={t} style={{
-                      padding: "10px 14px",
-                      borderRadius: 999,
-                      border: `1px solid ${palette.gold}`,
-                      background: "#fff",
-                      color: palette.gold,
-                      fontSize: 14,
-                    }}>
-                      {i + 1}. {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Nombre + acciones */}
-            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <label style={{ minWidth: 92, fontSize: 14, opacity: .85 }}>Tu nombre:</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej.: Gastón Ruiz"
-                  style={{
-                    flex: 1, minWidth: 220, padding: "10px 12px", borderRadius: 10,
-                    border: "1px solid rgba(0,0,0,.2)", background: "#fff",
-                  }}
-                />
-                <button
-                  onClick={undo}
-                  disabled={selected.length === 0}
-                  style={{
-                    padding: "10px 14px", borderRadius: 12,
-                    border: "1px solid rgba(0,0,0,.2)", background: "#fff",
-                    color: palette.ink, fontWeight: 600,
-                    opacity: selected.length === 0 ? 0.5 : 1,
-                  }}
-                  title="Deshacer último"
-                >
-                  <Undo2 size={18} style={{ marginTop: -3, marginRight: 6 }} />
-                  Deshacer
-                </button>
-                <button
-                  onClick={exportPNG}
-                  disabled={selected.length === 0}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 12,
-                    border: `1px solid ${palette.gold}`,
-                    background: palette.gold,
-                    color: "#fff",
-                    fontWeight: 700,
-                    letterSpacing: ".04em",
-                    boxShadow: "0 14px 40px rgba(185,146,81,.35)",
-                    opacity: selected.length === 0 ? 0.6 : 1,
-                  }}
-                  title="Generar historia 1080×1920"
-                >
-                  <Download size={18} style={{ marginTop: -3, marginRight: 6 }} />
-                  Generar historia 1080×1920
-                </button>
-              </div>
-
-              {/* Fondo y layout */}
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                  <label style={{ minWidth: 92, fontSize: 14, opacity: .85 }}>Fondo:</label>
-                  <input type="file" accept="image/*" onChange={onPickBg} />
-                  <input
-                    type="url"
-                    placeholder="o pegá una URL https://..."
-                    onChange={(e) => setBgUrl(e.target.value)}
-                    style={{ flex: 1, minWidth: 220, padding: "8px 10px", borderRadius: 10, border: "1px solid rgba(0,0,0,.2)" }}
-                  />
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
-                    <input type="checkbox" checked={showHeader} onChange={(e) => setShowHeader(e.target.checked)} />
-                    Mostrar header “LUX”
-                  </label>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "200px 1fr 76px", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: 13, opacity: .85 }}>Margen superior del ranking</span>
-                  <input type="range" min={360} max={760} value={listTop} onChange={(e)=>setListTop(parseInt(e.target.value))} />
-                  <span style={{ fontSize: 13 }}>{listTop}px</span>
-
-                  <span style={{ fontSize: 13, opacity: .85 }}>Margen inferior del ranking</span>
-                  <input type="range" min={120} max={320} value={listBottom} onChange={(e)=>setListBottom(parseInt(e.target.value))} />
-                  <span style={{ fontSize: 13 }}>{listBottom}px</span>
-                </div>
-              </div>
-            </div>
+          <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
+            <button
+              onClick={undo}
+              disabled={selected.length === 0}
+              style={{
+                flex: 1,
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "1px solid #ccc",
+                background: "#fff",
+                fontWeight: 600,
+              }}
+            >
+              <Undo2 size={16} style={{ marginRight: 4 }} /> Deshacer
+            </button>
+            <button
+              onClick={exportPNG}
+              disabled={selected.length === 0}
+              style={{
+                flex: 2,
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: `1px solid ${palette.gold}`,
+                background: palette.gold,
+                color: "#fff",
+                fontWeight: 700,
+              }}
+            >
+              <Download size={16} style={{ marginRight: 4 }} /> Generar historia
+            </button>
           </div>
 
-          {/* PREVIEW centrado */}
-          <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
-            <div style={{ width: W * scale, height: H * scale, position: "relative" }}>
-              <div style={{ transformOrigin: "top left", transform: `scale(${scale})` }}>
-                <PosterStory
-                  top={selected.slice(0, limit)}
-                  name={name || undefined}
-                  bgUrl={bgUrl}
-                  showHeader={showHeader}
-                  listTop={listTop}
-                  listBottom={listBottom}
-                />
-              </div>
+          <div style={{ marginTop: 16 }}>
+            <input
+              placeholder="Tu nombre (opcional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid #ccc",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* preview */}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div style={{ width: W * scale, height: H * scale }}>
+            <div style={{ transformOrigin: "top left", transform: `scale(${scale})` }}>
+              <PosterStory
+                top={selected.slice(0, limit)}
+                name={name || undefined}
+                bgUrl={bgUrl}
+              />
             </div>
           </div>
         </div>
