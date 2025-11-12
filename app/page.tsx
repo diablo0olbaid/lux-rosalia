@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { Undo2, Download } from "lucide-react";
 
-// ---------- DATA ----------
+// ====================== DATA ======================
 const TRACKS: string[] = [
   "Sexo, Violencia y Llantas",
   "Reliquia",
@@ -17,29 +17,41 @@ const TRACKS: string[] = [
   "De Madrugá",
   "Dios Es Un Stalker",
   "La Yugular",
-  "Focu ‘ranni [physical exclusive]",
+  "Focu ‘ranni",
   "Sauvignon Blanc",
-  "Jeanne [physical exclusive]",
-  "Novia Robot [physical exclusive]",
+  "Jeanne",
+  "Novia Robot",
   "La Rumba Del Perdón",
   "Memória",
   "Magnolias",
 ];
 
-// ---------- LOOK ----------
-const BG_URL = "https://www.rosalia.com/images/rl-wide.jpg";
+// ====================== LOOK ======================
+const BG_URL = "https://www.rosalia.com/images/rl-wide.jpg"; // foto oficial
 const palette = {
   ink: "#111",
   gold: "#b99251",
   goldLine: "#b99251",
 };
 
-// ------- Helpers -------
-const W = 1080, H = 1920;
-function toUpperPretty(s: string) { return s.toLocaleUpperCase(); }
+const W = 1080;
+const H = 1920;
 
-// Texto justificado por letra con auto-fit
-function JustifiedWord({ text, max = 92 }: { text: string; max?: number }) {
+function toUpperPretty(s: string) {
+  return s.toLocaleUpperCase();
+}
+
+// ====================== JUSTIFIED LINE W/ AUTOFIT ======================
+// Texto justificado por letra con auto–fit estable (sin saltos, sin ligaduras)
+function JustifiedWord({
+  text,
+  max = 88,
+  min = 26,
+}: {
+  text: string;
+  max?: number;
+  min?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [fs, setFs] = useState(max);
   const letters = [...text.replace(/\s+/g, " ")];
@@ -47,18 +59,34 @@ function JustifiedWord({ text, max = 92 }: { text: string; max?: number }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const calc = () => {
-      const box = el.getBoundingClientRect();
-      const chars = letters.filter((c) => c !== " ").length || 1;
-      // ancho promedio de glifo serif ≈ 0.62em
-      const target = Math.max(28, Math.min(max, Math.floor((box.width / chars) * 0.62)));
-      setFs(target);
+
+    const fit = () => {
+      let lo = min,
+        hi = max,
+        best = min;
+      const prev = el.style.fontSize;
+
+      for (let i = 0; i < 12; i++) {
+        const mid = Math.floor((lo + hi) / 2);
+        el.style.fontSize = `${mid}px`;
+        const over = el.scrollWidth > el.clientWidth + 1; // tolerancia 1px
+        if (over) hi = mid - 1;
+        else {
+          best = mid;
+          lo = mid + 1;
+        }
+      }
+
+      el.style.fontSize = prev;
+      setFs(best);
     };
-    const ro = new ResizeObserver(calc);
+
+    const ro = new ResizeObserver(fit);
     ro.observe(el);
-    calc();
+    // asegurar layout + fuentes listas
+    Promise.resolve().then(() => requestAnimationFrame(fit));
     return () => ro.disconnect();
-  }, [text, max]);
+  }, [text, max, min]);
 
   return (
     <div
@@ -69,8 +97,10 @@ function JustifiedWord({ text, max = 92 }: { text: string; max?: number }) {
         alignItems: "baseline",
         width: "100%",
         fontSize: fs,
-        lineHeight: 1.02,
+        lineHeight: 1.04,
         whiteSpace: "nowrap",
+        fontVariantLigatures: "none",
+        fontKerning: "none",
       }}
       aria-label={text}
     >
@@ -89,9 +119,10 @@ function JustifiedWord({ text, max = 92 }: { text: string; max?: number }) {
   );
 }
 
-// ---------- POSTER (1080x1920) ----------
+// ====================== POSTER ======================
 function PosterStory({ top, name }: { top: string[]; name?: string }) {
-  const base = top.length <= 5 ? 110 : top.length <= 6 ? 100 : top.length <= 7 ? 94 : 88;
+  // tamaños base seguros por cantidad de líneas
+  const base = top.length <= 5 ? 100 : top.length <= 6 ? 92 : top.length <= 7 ? 88 : 82;
 
   return (
     <div
@@ -110,50 +141,79 @@ function PosterStory({ top, name }: { top: string[]; name?: string }) {
       {/* Velo */}
       <div
         style={{
-          position: "absolute", inset: 0,
-          background: "linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,255,255,.90) 40%, rgba(255,255,255,.95) 100%)",
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,255,255,.90) 40%, rgba(255,255,255,.95) 100%)",
         }}
       />
       {/* Marco dorado */}
       <div
         style={{
-          position: "absolute", inset: 16,
+          position: "absolute",
+          inset: 16,
           border: `2px solid ${palette.goldLine}`,
-          borderRadius: 28, pointerEvents: "none",
+          borderRadius: 28,
+          pointerEvents: "none",
         }}
       />
 
       {/* Header compacto */}
-      <div style={{ position: "absolute", top: 96, left: 72, right: 72, textAlign: "center", color: palette.ink }}>
-        <div style={{ letterSpacing: "1.2em", opacity: .8, fontSize: 30 }}>R O S A L Í A</div>
-        <div style={{ marginTop: 8, letterSpacing: "0.32em", lineHeight: .9, fontSize: 138 }}>
-          <span style={{ fontWeight: 700 }}>L</span><span> U X</span>
-        </div>
-        <div style={{ marginTop: 6, letterSpacing: "0.16em", opacity: .8, fontSize: 28 }}>M I  T O P · 2 0 2 5</div>
-      </div>
-
-      {/* Lista – columna con gap (no grid de filas fijas) */}
       <div
         style={{
           position: "absolute",
-          top: 430, // más aire para que no invada el header
-          bottom: 150,
+          top: 96,
+          left: 72,
+          right: 72,
+          textAlign: "center",
+          color: palette.ink,
+        }}
+      >
+        <div style={{ letterSpacing: "1.2em", opacity: 0.8, fontSize: 30 }}>R O S A L Í A</div>
+        <div style={{ marginTop: 8, letterSpacing: "0.32em", lineHeight: 0.9, fontSize: 120 }}>
+          <span style={{ fontWeight: 700 }}>L</span>
+          <span> U X</span>
+        </div>
+        <div style={{ marginTop: 6, letterSpacing: "0.16em", opacity: 0.8, fontSize: 28 }}>
+          M I &nbsp; T O P · 2 0 2 5
+        </div>
+      </div>
+
+      {/* Lista – columna con gap (no filas fijas) */}
+      <div
+        style={{
+          position: "absolute",
+          top: 520, // aire para que no invada el header
+          bottom: 190,
           left: 72,
           right: 72,
           display: "flex",
           flexDirection: "column",
-          gap: 14,
+          gap: 16,
           color: palette.ink,
         }}
       >
         {top.map((nameSong, i) => (
-          <div key={nameSong} style={{ display: "grid", gridTemplateColumns: "70px 1fr", alignItems: "center", gap: 22 }}>
+          <div
+            key={nameSong}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "70px 1fr",
+              alignItems: "center",
+              gap: 22,
+            }}
+          >
             <div
               style={{
-                width: 64, height: 64, borderRadius: 9999,
-                background: palette.gold, color: "#fff",
-                display: "grid", placeItems: "center",
-                fontWeight: 700, fontSize: 24,
+                width: 64,
+                height: 64,
+                borderRadius: 9999,
+                background: palette.gold,
+                color: "#fff",
+                display: "grid",
+                placeItems: "center",
+                fontWeight: 700,
+                fontSize: 24,
                 boxShadow: "0 10px 28px rgba(185,146,81,.35)",
               }}
             >
@@ -167,39 +227,67 @@ function PosterStory({ top, name }: { top: string[]; name?: string }) {
       {/* Footer */}
       <div
         style={{
-          position: "absolute", left: 72, right: 72, bottom: 86,
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          color: palette.ink, fontSize: 20,
+          position: "absolute",
+          left: 72,
+          right: 72,
+          bottom: 86,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          color: palette.ink,
+          fontSize: 20,
         }}
       >
-        <div style={{ letterSpacing: ".35em", textTransform: "uppercase", opacity: .75 }}>LUX ranking</div>
+        <div style={{ letterSpacing: ".35em", textTransform: "uppercase", opacity: 0.75 }}>
+          Fan ranking
+        </div>
         <div style={{ color: palette.gold, fontWeight: 700 }}>{name ? name : "#LUXTop"}</div>
       </div>
     </div>
   );
 }
 
-// ---------- APP (UX ULTRA SIMPLE) ----------
+// ====================== APP (UX ULTRA SIMPLE) ======================
 export default function LuxViral() {
   const [selected, setSelected] = useState<string[]>([]);
   const [name, setName] = useState<string>("");
-  const remaining = useMemo(() => TRACKS.filter((t) => !selected.includes(t)), [selected]);
+  const remaining = useMemo(
+    () => TRACKS.filter((t) => !selected.includes(t)),
+    [selected]
+  );
   const limit = 8;
 
-  const add = (t: string) => { if (selected.length < limit) setSelected((p) => [...p, t]); };
+  const add = (t: string) => {
+    if (selected.length < limit) setSelected((p) => [...p, t]);
+  };
   const undo = () => setSelected((p) => p.slice(0, -1));
 
   const exportPNG = async () => {
     const node = document.getElementById("lux-story");
     if (!node) return;
-    const canvas = await html2canvas(node as HTMLElement, { backgroundColor: null, useCORS: true, scale: 3 });
+
+    // Esperar fuentes + 2 frames para que el auto-fit termine
+    try {
+      // @ts-ignore
+      await document.fonts?.ready;
+    } catch {}
+    await new Promise((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(r))
+    );
+
+    const canvas = await html2canvas(node as HTMLElement, {
+      backgroundColor: null,
+      useCORS: true,
+      scale: 3,
+    });
+
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
     a.download = `LUX-story-${Date.now()}.png`;
     a.click();
   };
 
-  // escala del preview y wrapper con tamaño reservado (no se corta a la izquierda)
+  // preview centrado con tamaño reservado (no “se corta” a la izquierda)
   const scale = 0.36;
 
   return (
@@ -214,11 +302,14 @@ export default function LuxViral() {
         <div style={{ maxWidth: 1060, margin: "0 auto", padding: "22px 14px 36px" }}>
           {/* Cabecera */}
           <div style={{ textAlign: "center", color: palette.ink, marginBottom: 10 }}>
-            <div style={{ letterSpacing: "1.2em", opacity: .75, fontSize: 14 }}>R O S A L Í A</div>
-            <div style={{ marginTop: 8, letterSpacing: ".35em", fontSize: 30 }}>
-              <span style={{ fontWeight: 700 }}>L</span><span> U X</span>
+            <div style={{ letterSpacing: "1.2em", opacity: 0.75, fontSize: 14 }}>
+              R O S A L Í A
             </div>
-            <div style={{ marginTop: 6, opacity: .75, fontSize: 13 }}>
+            <div style={{ marginTop: 8, letterSpacing: ".35em", fontSize: 30 }}>
+              <span style={{ fontWeight: 700 }}>L</span>
+              <span> U X</span>
+            </div>
+            <div style={{ marginTop: 6, opacity: 0.75, fontSize: 13 }}>
               Tocá para elegir tus favoritas <b>en orden</b> y generá la historia.
             </div>
           </div>
@@ -236,6 +327,7 @@ export default function LuxViral() {
             <div style={{ marginBottom: 8, fontSize: 16 }}>
               Canciones (tap para agregar · {selected.length}/{limit})
             </div>
+
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {remaining.map((t) => (
                 <button
@@ -258,7 +350,9 @@ export default function LuxViral() {
             {/* Selección actual */}
             {selected.length > 0 && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 6 }}>Tu orden:</div>
+                <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 6 }}>
+                  Tu orden:
+                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {selected.map((t, i) => (
                     <span
@@ -282,14 +376,19 @@ export default function LuxViral() {
             {/* Nombre + acciones */}
             <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <label style={{ minWidth: 92, fontSize: 14, opacity: .85 }}>Tu nombre:</label>
+                <label style={{ minWidth: 92, fontSize: 14, opacity: 0.85 }}>
+                  Tu nombre:
+                </label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej.: Rosalía"
+                  placeholder="Ej.: Gastón Ruiz"
                   style={{
-                    flex: 1, padding: "10px 12px", borderRadius: 10,
-                    border: "1px solid rgba(0,0,0,.2)", background: "#fff",
+                    flex: 1,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(0,0,0,.2)",
+                    background: "#fff",
                   }}
                 />
               </div>
@@ -299,9 +398,13 @@ export default function LuxViral() {
                   onClick={undo}
                   disabled={selected.length === 0}
                   style={{
-                    flex: 1, padding: "12px 14px", borderRadius: 14,
-                    border: "1px solid rgba(0,0,0,.2)", background: "#fff",
-                    color: palette.ink, fontWeight: 600,
+                    flex: 1,
+                    padding: "12px 14px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(0,0,0,.2)",
+                    background: "#fff",
+                    color: palette.ink,
+                    fontWeight: 600,
                     opacity: selected.length === 0 ? 0.5 : 1,
                   }}
                   title="Deshacer último"
@@ -313,9 +416,14 @@ export default function LuxViral() {
                   onClick={exportPNG}
                   disabled={selected.length === 0}
                   style={{
-                    flex: 2, padding: "12px 14px", borderRadius: 14,
-                    border: `1px solid ${palette.gold}`, background: palette.gold,
-                    color: "#fff", fontWeight: 700, letterSpacing: ".04em",
+                    flex: 2,
+                    padding: "12px 14px",
+                    borderRadius: 14,
+                    border: `1px solid ${palette.gold}`,
+                    background: palette.gold,
+                    color: "#fff",
+                    fontWeight: 700,
+                    letterSpacing: ".04em",
                     boxShadow: "0 14px 40px rgba(185,146,81,.35)",
                     opacity: selected.length === 0 ? 0.6 : 1,
                   }}
@@ -328,7 +436,7 @@ export default function LuxViral() {
             </div>
           </div>
 
-          {/* PREVIEW centrado y sin corte */}
+          {/* PREVIEW centrado y con tamaño reservado */}
           <div style={{ marginTop: 18, display: "flex", justifyContent: "center" }}>
             <div style={{ width: W * scale, height: H * scale, position: "relative" }}>
               <div style={{ transformOrigin: "top left", transform: `scale(${scale})` }}>
