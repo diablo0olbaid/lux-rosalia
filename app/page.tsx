@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { Undo2, Download } from "lucide-react";
 
+// ---------------- DATA ----------------
 const TRACKS = [
   "Sexo, Violencia y Llantas",
   "Reliquia",
@@ -25,125 +26,138 @@ const TRACKS = [
   "Magnolias",
 ];
 
-const W = 1080, H = 1920;
-const palette = { ink: "#111", gold: "#b99251" };
+// ---------------- LOOK ----------------
+const W = 1080;
+const H = 1920;
+const BG_URL = "/lux-final-bg.jpg"; // poné tu jpg en /public con este nombre
+const palette = { ink: "#111" };
 
-// ========= Línea centrada y justificada por ESPACIADO (sin solapes) =========
-function JustifiedLine({
+// ------------- utils -------------
+const roman = (n: number) => {
+  const map: [number, string][] = [
+    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+    [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+  ];
+  let res = "", v = n;
+  for (const [val, sym] of map) {
+    while (v >= val) { res += sym; v -= val; }
+  }
+  return res;
+};
+
+// ========= Línea centrada con auto-fit y corte si no entra =========
+function FitLine({
   text,
-  max = 88,
-  min = 26,
-  color = "#111",
+  max = 96,        // tamaño máximo
+  min = 36,        // tamaño mínimo
+  trackingEm = 0.18, // tracking (look LUX)
+  color = palette.ink,
 }: {
   text: string;
   max?: number;
   min?: number;
+  trackingEm?: number;
   color?: string;
 }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
+  const txt = useRef<HTMLDivElement>(null);
   const [fs, setFs] = useState(max);
-  const [w, setW] = useState(0);
 
-  // mide ancho real con la fuente en un canvas offscreen
-  const measure = (t: string, size: number) => {
-    const c = document.createElement("canvas");
-    const ctx = c.getContext("2d")!;
-    ctx.font = `${size}px "Times New Roman", Times, serif`;
-    // desactivar ligaduras/kerning en el cálculo
-    // (no todas las implementaciones lo respetan, por eso usamos spacing luego)
-    return ctx.measureText(t).width;
-  };
+  const U = useMemo(() => text.toUpperCase(), [text]);
+
+  // mide el ancho real del contenido
+  const contentWidth = () => (txt.current?.scrollWidth ?? 0);
+  const boxWidth = () => (wrap.current?.clientWidth ?? 0);
 
   useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-
     const doFit = () => {
-      const width = Math.max(1, Math.floor(el.getBoundingClientRect().width));
-      setW(width);
-      // binary search para el font-size más grande que quepa SIN justificar
+      const bw = boxWidth();
+      if (!bw) return;
       let lo = min, hi = max, best = min;
-      const T = text.toUpperCase();
       for (let i = 0; i < 12; i++) {
         const mid = Math.floor((lo + hi) / 2);
-        if (measure(T, mid) <= width) {
-          best = mid; lo = mid + 1;
-        } else {
-          hi = mid - 1;
-        }
+        if (txt.current) txt.current.style.fontSize = `${mid}px`;
+        // colchón 1.5% para evitar saltitos
+        if (contentWidth() <= bw * 0.985) { best = mid; lo = mid + 1; }
+        else { hi = mid - 1; }
       }
       setFs(best);
+      if (txt.current) txt.current.style.fontSize = `${best}px`;
     };
 
     const ro = new ResizeObserver(doFit);
-    ro.observe(el);
-    Promise.resolve().then(() => requestAnimationFrame(doFit));
+    if (wrap.current) ro.observe(wrap.current);
+    // esperar fonts y un par de frames
+    Promise.resolve().then(
+      () => requestAnimationFrame(() => requestAnimationFrame(doFit))
+    );
     return () => ro.disconnect();
-  }, [text, max, min]);
-
-  const h = Math.ceil(fs * 1.12);
-  const T = text.toUpperCase();
+  }, [U, max, min]);
 
   return (
-    <div ref={wrapRef} style={{ width: "100%" }}>
-      <svg width="100%" height={h} viewBox={`0 0 ${Math.max(1, w)} ${h}`} preserveAspectRatio="none">
-        <text
-          x={0}
-          y={Math.floor(h * 0.82)}
-          textAnchor="start"
-          fill={color}
-          fontFamily="'Times New Roman', Times, serif"
-          fontSize={fs}
-          // Importantísimo: justificar solo ESPACIADO, sin deformar glifos
-          textLength={Math.max(1, w)}
-          lengthAdjust="spacing"
-          // y desactivar ligaduras/kerning para que html2canvas renderice igual
-          style={{
-            fontKerning: "none" as any,
-            fontFeatureSettings: '"liga" 0, "clig" 0',
-          }}
-        >
-          {T}
-        </text>
-      </svg>
+    <div ref={wrap} style={{ width: "100%", overflow: "hidden" }}>
+      <div
+        ref={txt}
+        style={{
+          fontFamily: "'Times New Roman', Times, serif",
+          fontWeight: 400,
+          letterSpacing: `${trackingEm}em`,
+          color,
+          fontSize: fs,
+          whiteSpace: "nowrap",
+          textAlign: "center",
+          // corte limpio si no entra aún en min
+          overflow: "hidden",
+          textOverflow: "clip",
+          lineHeight: 1.05,
+          // hace que se vea consistente al exportar
+          fontKerning: "none" as any,
+          // quita ligaduras para que html2canvas no cambie el ancho
+          fontFeatureSettings: '"liga" 0, "clig" 0',
+        }}
+      >
+        {U}
+      </div>
     </div>
   );
 }
 
-// ========= Poster solo con el ranking encima del fondo =========
-function PosterStory({
+// ========= Poster: SOLO ranking sobre el fondo =========
+function Poster({
   top,
   name,
-  bgUrl,
+  listTop = 620,     // ajustá si tu arte lo necesita
+  listBottom = 220,  // espacio inferior
 }: {
   top: string[];
   name?: string;
-  bgUrl: string;
+  listTop?: number;
+  listBottom?: number;
 }) {
-  const base = top.length <= 5 ? 100 : top.length <= 6 ? 90 : top.length <= 7 ? 84 : 76;
+  // base por cantidad de líneas (más líneas → fuente base menor)
+  const base = top.length <= 5 ? 104 : top.length <= 6 ? 96 : top.length <= 7 ? 90 : 84;
 
   return (
     <div
       id="lux-story"
       style={{
-        width: W,
-        height: H,
-        position: "relative",
-        overflow: "hidden",
+        width: W, height: H, position: "relative", overflow: "hidden",
+        background: `url(${BG_URL}) center/cover no-repeat`,
         fontFamily: "'Times New Roman', Times, serif",
-        background: `url(${bgUrl}) center/cover no-repeat`,
       }}
     >
+      {/* BLOQUE DE LISTA */}
       <div
         style={{
           position: "absolute",
-          top: 820,
-          left: 72,
-          right: 72,
+          top: listTop,
+          bottom: listBottom,
+          left: 84,
+          right: 84,
           display: "flex",
           flexDirection: "column",
-          gap: 16,
-          color: palette.ink,
+          gap: 22,
         }}
       >
         {top.map((t, i) => (
@@ -151,55 +165,51 @@ function PosterStory({
             key={t}
             style={{
               display: "grid",
-              gridTemplateColumns: "70px 1fr",
+              gridTemplateColumns: "96px 1fr",
               alignItems: "center",
-              gap: 22,
+              gap: 20,
             }}
           >
+            {/* Número romano (sin círculo) */}
             <div
               style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: palette.gold,
-                color: "#fff",
-                display: "grid",
-                placeItems: "center",
-                fontWeight: 700,
-                fontSize: 24,
+                textAlign: "right",
+                paddingRight: 8,
+                fontSize: 40,
+                letterSpacing: ".1em",
+                color: palette.ink,
               }}
             >
-              {i + 1}
+              {roman(i + 1)}.
             </div>
-            <JustifiedLine text={t.toUpperCase()} max={base} />
+
+            {/* Título con auto-fit y corte si hace falta */}
+            <FitLine text={t} max={base} min={40} trackingEm={0.22} />
           </div>
         ))}
       </div>
 
+      {/* Firma / nombre (opcional) */}
       <div
         style={{
           position: "absolute",
-          right: 80,
+          right: 88,
           bottom: 120,
-          color: palette.gold,
-          fontWeight: 700,
-          fontSize: 26,
+          fontSize: 28,
+          color: palette.ink,
         }}
       >
-        {name ? name : "#LUXTOP"}
+        {name ? name : ""}
       </div>
     </div>
   );
 }
 
-// ========= App principal =========
-export default function LuxMinimal() {
+// ========= App mínima =========
+export default function LuxRanking() {
   const [selected, setSelected] = useState<string[]>([]);
   const [name, setName] = useState("");
   const limit = 8;
-
-  // cambia esta línea por la URL de tu imagen en GitHub
-  const bgUrl = "/lux-final-bg.jpg"; // ej: public/lux-final-bg.jpg
 
   const remaining = TRACKS.filter((t) => !selected.includes(t));
   const add = (t: string) =>
@@ -209,48 +219,40 @@ export default function LuxMinimal() {
   const exportPNG = async () => {
     const node = document.getElementById("lux-story");
     if (!node) return;
+
+    try { /* @ts-ignore */ await document.fonts?.ready; } catch {}
     await new Promise((r) =>
       requestAnimationFrame(() => requestAnimationFrame(r))
     );
+
     const canvas = await html2canvas(node as HTMLElement, {
       backgroundColor: null,
-      useCORS: true,
+      useCORS: true,       // ok con /public
+      allowTaint: false,   // no taint
       scale: 3,
       foreignObjectRendering: true,
     });
+
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
-    a.download = `lux-ranking.png`;
+    a.download = "lux-ranking.png";
     a.click();
   };
 
+  // preview scale
   const scale = 0.36;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#fafafa",
-        fontFamily: "'Times New Roman', Times, serif",
-      }}
-    >
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 24, letterSpacing: ".3em" }}>
-            <b>LUX</b> RANKING
-          </div>
-          <p style={{ fontSize: 14 }}>
-            Elegí tus canciones y generá tu historia.
-          </p>
-        </div>
-
+    <div style={{ minHeight: "100vh", background: "#fafafa" }}>
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: 20, fontFamily: "'Times New Roman', Times, serif" }}>
+        {/* Controles simples */}
         <div
           style={{
             background: "#fff",
-            borderRadius: 12,
-            border: "1px solid #ddd",
-            padding: 16,
-            marginBottom: 20,
+            border: "1px solid #dedede",
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 16,
           }}
         >
           <div style={{ marginBottom: 8, fontSize: 15 }}>
@@ -262,9 +264,9 @@ export default function LuxMinimal() {
                 key={t}
                 onClick={() => add(t)}
                 style={{
-                  border: `1px solid ${palette.gold}`,
+                  border: "1px solid #bbb",
                   background: "#fff",
-                  color: palette.gold,
+                  color: palette.ink,
                   borderRadius: 9999,
                   padding: "10px 14px",
                   fontSize: 14,
@@ -275,7 +277,7 @@ export default function LuxMinimal() {
             ))}
           </div>
 
-          <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
+          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
             <button
               onClick={undo}
               disabled={selected.length === 0}
@@ -286,6 +288,7 @@ export default function LuxMinimal() {
                 border: "1px solid #ccc",
                 background: "#fff",
                 fontWeight: 600,
+                opacity: selected.length === 0 ? 0.5 : 1,
               }}
             >
               <Undo2 size={16} style={{ marginRight: 4 }} /> Deshacer
@@ -297,17 +300,18 @@ export default function LuxMinimal() {
                 flex: 2,
                 padding: "10px 14px",
                 borderRadius: 10,
-                border: `1px solid ${palette.gold}`,
-                background: palette.gold,
+                border: "1px solid #111",
+                background: "#111",
                 color: "#fff",
                 fontWeight: 700,
               }}
             >
-              <Download size={16} style={{ marginRight: 4 }} /> Generar historia
+              <Download size={16} style={{ marginRight: 6 }} />
+              Generar historia
             </button>
           </div>
 
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 12 }}>
             <input
               placeholder="Tu nombre (opcional)"
               value={name}
@@ -322,15 +326,11 @@ export default function LuxMinimal() {
           </div>
         </div>
 
-        {/* preview */}
+        {/* PREVIEW */}
         <div style={{ display: "flex", justifyContent: "center" }}>
           <div style={{ width: W * scale, height: H * scale }}>
             <div style={{ transformOrigin: "top left", transform: `scale(${scale})` }}>
-              <PosterStory
-                top={selected.slice(0, limit)}
-                name={name || undefined}
-                bgUrl={bgUrl}
-              />
+              <Poster top={selected.slice(0, limit)} name={name || undefined} />
             </div>
           </div>
         </div>
