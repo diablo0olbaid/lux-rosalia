@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Undo2, Download } from "lucide-react";
 
 /* ================== DATA ================== */
@@ -29,158 +28,114 @@ const TRACKS = [
 /* ================== LOOK / LAYOUT ================== */
 const W = 1080;
 const H = 1920;
-const BG_URL = "/lux-final-bg.jpg"; // en /public
+const BG_URL = "/lux-final-bg.jpg"; // poné el JPG en /public con este nombre
+
 const INK = "#292929";
 const GOLD = "#b99251";
 
-const LIST_TOP = 980;   // mové esto si necesitás
-const LIST_BOTTOM = 220;
+const LIST_TOP = 980;   // mové esto si querés subir/bajar el bloque
 const LEFT = 84;
 const RIGHT = 84;
 const NUM_COL = 120;
 const GAP_COL = 18;
-const GAP_ROWS = 28;    // separación entre filas
+const GAP_ROWS = 28;
 
-// todo a 60px
-const FS = 60;
+// TODAS las tipografías a 45px
+const FS = 45;
 const TRACKING_EM = 0.12; // tracking sutil
 
 const roman = (n: number) => {
   const map: [number, string][] = [
-    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
-    [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
-    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+    [1000,"M"],[900,"CM"],[500,"D"],[400,"CD"],
+    [100,"C"],[90,"XC"],[50,"L"],[40,"XL"],
+    [10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"],
   ];
   let res = "", v = n;
   for (const [val, sym] of map) while (v >= val) { res += sym; v -= val; }
   return res;
 };
 
-/* ============== LÍNEA FIJA (preview) ============== */
-function FixedLine({ text }: { text: string }) {
-  const U = useMemo(() => text.toUpperCase(), [text]);
-  return (
-    <div
-      style={{
-        width: "100%",
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        textOverflow: "clip",
-        fontFamily: "'Times New Roman', Times, serif",
-        fontSize: FS,
-        letterSpacing: `${TRACKING_EM}em`,
-        color: INK,
-        lineHeight: 1.1,
-        textAlign: "left",
-        fontKerning: "none" as any,
-        fontFeatureSettings: '"liga" 0, "clig" 0',
-      }}
-      title={U}
-    >
-      {U}
-    </div>
-  );
-}
+/* ============== CANVAS POSTER (preview = export) ============== */
+function CanvasPoster({ lines, name }: { lines: string[]; name?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-/* ============== POSTER (preview = export) ============== */
-function Poster({ top, name }: { top: string[]; name?: string }) {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // tamaño exacto de historia
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Cargar fondo y dibujar todo
+    const bg = new Image();
+    bg.crossOrigin = "anonymous"; // por las dudas
+    bg.src = BG_URL;
+
+    bg.onload = () => {
+      // Fondo
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(bg, 0, 0, W, H);
+
+      // Estilo base
+      ctx.fillStyle = INK;
+      ctx.textBaseline = "alphabetic";
+
+      // Métricas comunes
+      const textX = LEFT + NUM_COL + GAP_COL;
+      const textW = W - LEFT - RIGHT - NUM_COL - GAP_COL;
+
+      // Dibujo filas
+      let y = LIST_TOP;
+      lines.forEach((raw, i) => {
+        const U = raw.toUpperCase();
+
+        // Número romano (45px)
+        ctx.font = `${FS}px "Times New Roman", Times, serif`;
+        const rn = roman(i + 1) + ".";
+        const rnW = ctx.measureText(rn).width;
+        ctx.fillText(rn, LEFT + NUM_COL - 10 - rnW, y);
+
+        // Título (45px) con tracking a mano; si no entra, recorto
+        const trackPx = TRACKING_EM * FS;
+        ctx.font = `${FS}px "Times New Roman", Times, serif`;
+
+        let x = textX;
+        for (let idx = 0; idx < U.length; idx++) {
+          const ch = U[idx];
+          const cw = ctx.measureText(ch).width;
+          if (x + cw > textX + textW) break; // recorte limpio
+          ctx.fillText(ch, x, y);
+          x += cw + (idx < U.length - 1 ? trackPx : 0);
+        }
+
+        // siguiente fila (lineHeight 1.1 aprox + gap)
+        y += Math.ceil(FS * 1.1) + GAP_ROWS;
+      });
+
+      // Firma (opcional) también a 45px
+      if (name) {
+        ctx.font = `${FS}px "Times New Roman", Times, serif`;
+        const label = name.toUpperCase();
+        const wName = ctx.measureText(label).width;
+        ctx.fillText(label, W - RIGHT - wName, H - 120);
+      }
+    };
+  }, [lines, name]);
+
   return (
-    <div
-      id="lux-story"
+    <canvas
+      ref={canvasRef}
+      id="lux-canvas"
       style={{
-        width: W,
+        width: W,        // importante: dejamos tamaño CSS = tamaño real
         height: H,
-        position: "relative",
-        overflow: "hidden",
-        background: `url(${BG_URL}) center/cover no-repeat`,
-        fontFamily: "'Times New Roman', Times, serif",
+        display: "block",
       }}
-    >
-      {/* bloque centrado, texto a la izquierda */}
-      <div
-        style={{
-          position: "absolute",
-          top: LIST_TOP,
-          bottom: LIST_BOTTOM,
-          left: LEFT,
-          right: RIGHT,
-          display: "flex",
-          flexDirection: "column",
-          gap: GAP_ROWS,
-          margin: "0 auto",
-        }}
-      >
-        {top.map((t, i) => (
-          <div
-            key={`${i}-${t}`}
-            style={{
-              display: "grid",
-              gridTemplateColumns: `${NUM_COL}px 1fr`,
-              alignItems: "center",
-              gap: GAP_COL,
-            }}
-          >
-            {/* romanos a 60px */}
-            <div
-              style={{
-                textAlign: "right",
-                paddingRight: 10,
-                fontSize: FS,
-                letterSpacing: `${TRACKING_EM}em`,
-                color: INK,
-                lineHeight: 1.1,
-              }}
-            >
-              {roman(i + 1)}.
-            </div>
-            <FixedLine text={t} />
-          </div>
-        ))}
-      </div>
-
-      {/* firma opcional */}
-      {name ? (
-        <div
-          style={{
-            position: "absolute",
-            right: 88,
-            bottom: 120,
-            fontSize: FS,
-            color: INK,
-            letterSpacing: `${TRACKING_EM}em`,
-            lineHeight: 1.1,
-          }}
-        >
-          {name.toUpperCase()}
-        </div>
-      ) : null}
-    </div>
+    />
   );
-}
-
-/* ============== EXPORTA EXACTO EL PREVIEW ============== */
-async function exportPreviewPNG() {
-  const node = document.getElementById("lux-story");
-  if (!node) return;
-
-  try { /* @ts-ignore */ await document.fonts?.ready; } catch {}
-  // 2 frames para asegurarnos que todo está pintado
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-  const canvas = await html2canvas(node as HTMLElement, {
-    backgroundColor: null,
-    useCORS: true,      // funciona con /public
-    allowTaint: false,  // evita canvas tainted
-    scale: 3,           // nitidez
-    foreignObjectRendering: true,
-    width: W,
-    height: H,
-  });
-
-  const a = document.createElement("a");
-  a.href = canvas.toDataURL("image/png");
-  a.download = "lux-ranking.png";
-  a.click();
 }
 
 /* ================== APP ================== */
@@ -194,14 +149,24 @@ export default function LuxRanking() {
     [selected]
   );
 
-  const add = (t: string) => selected.length < limit && setSelected((p) => [...p, t]);
+  const add = (t: string) =>
+    selected.length < limit && setSelected((p) => [...p, t]);
   const undo = () => setSelected((p) => p.slice(0, -1));
 
-  const scale = 0.36; // solo para mostrar pequeño el poster real (W x H)
+  const download = () => {
+    const canvas = document.getElementById("lux-canvas") as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = "lux-ranking.png";
+    a.click();
+  };
+
+  const scale = 0.36; // mostramos el canvas real escalado para preview
 
   return (
     <div style={{ minHeight: "100vh", background: "#fafafa", fontFamily: "'Times New Roman', Times, serif" }}>
-      {/* HEADER simple R O S A L Í A / L U X */}
+      {/* HEADER: R O S A L Í A / L U X */}
       <div style={{ textAlign: "center", paddingTop: 18, paddingBottom: 6 }}>
         <div style={{ fontSize: 18, letterSpacing: ".5em", color: INK, marginBottom: 4 }}>
           R O S A L Í A
@@ -212,7 +177,7 @@ export default function LuxRanking() {
       </div>
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: 20 }}>
-        {/* Controles dorados */}
+        {/* Controles en dorado */}
         <div style={{ background: "#fff", border: "1px solid #dedede", borderRadius: 14, padding: 14, marginBottom: 16 }}>
           <div style={{ marginBottom: 8, fontSize: 15, color: INK }}>
             Canciones ({selected.length}/{limit})
@@ -257,7 +222,7 @@ export default function LuxRanking() {
               <Undo2 size={16} style={{ marginRight: 4 }} /> Deshacer
             </button>
             <button
-              onClick={exportPreviewPNG}
+              onClick={download}
               disabled={selected.length === 0}
               style={{
                 flex: 2,
@@ -286,11 +251,11 @@ export default function LuxRanking() {
           </div>
         </div>
 
-        {/* PREVIEW: el nodo real 1080x1920 escalado (lo que se exporta) */}
+        {/* PREVIEW: el MISMO canvas, solo escalado */}
         <div style={{ display: "flex", justifyContent: "center" }}>
           <div style={{ width: W * scale, height: H * scale }}>
             <div style={{ transformOrigin: "top left", transform: `scale(${scale})` }}>
-              <Poster top={selected.slice(0, limit)} name={name || undefined} />
+              <CanvasPoster lines={selected.slice(0, limit)} name={name || undefined} />
             </div>
           </div>
         </div>
